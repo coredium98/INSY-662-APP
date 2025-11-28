@@ -45,6 +45,10 @@ class LogTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         # Apply log transformation
+        # Ensure offset attribute exists (for backward compatibility with pickled models)
+        if not hasattr(self, 'offset'):
+            self.offset = 1
+
         if isinstance(X, pd.DataFrame):
             # Ensure DataFrame has numeric dtypes
             X_numeric = X.apply(pd.to_numeric, errors='coerce').fillna(0)
@@ -86,6 +90,10 @@ class SingleColumnPowerTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         # Apply power transformation
+        # Ensure power attribute exists (for backward compatibility with pickled models)
+        if not hasattr(self, 'power'):
+            self.power = 2
+
         if isinstance(X, pd.DataFrame):
             # Ensure DataFrame has numeric dtypes
             X_numeric = X.apply(pd.to_numeric, errors='coerce').fillna(0)
@@ -116,12 +124,21 @@ class CityMedianImputer(BaseEstimator, TransformerMixin):
         self.medians_ = {}
 
     def fit(self, X, y=None):
+        # Ensure attributes exist
+        if not hasattr(self, 'city_col'):
+            self.city_col = None
+        if not hasattr(self, 'medians_'):
+            self.medians_ = {}
+
         # Calculate medians per city if applicable
         if isinstance(X, pd.DataFrame) and self.city_col and self.city_col in X.columns:
             self.medians_ = X.groupby(self.city_col).median().to_dict()
         return self
 
     def transform(self, X):
+        # Ensure attributes exist
+        if not hasattr(self, 'medians_'):
+            self.medians_ = {}
         # Return X as-is for compatibility
         return X
 
@@ -136,12 +153,21 @@ class CityModeImputer(BaseEstimator, TransformerMixin):
         self.modes_ = {}
 
     def fit(self, X, y=None):
+        # Ensure attributes exist
+        if not hasattr(self, 'city_col'):
+            self.city_col = None
+        if not hasattr(self, 'modes_'):
+            self.modes_ = {}
+
         # Calculate modes per city if applicable
         if isinstance(X, pd.DataFrame) and self.city_col and self.city_col in X.columns:
             self.modes_ = X.groupby(self.city_col).agg(lambda x: x.mode()[0] if len(x.mode()) > 0 else None).to_dict()
         return self
 
     def transform(self, X):
+        # Ensure attributes exist
+        if not hasattr(self, 'modes_'):
+            self.modes_ = {}
         # Return X as-is for compatibility
         return X
 
@@ -155,9 +181,15 @@ class ElevationKNNImputer(BaseEstimator, TransformerMixin):
         self.n_neighbors = n_neighbors
 
     def fit(self, X, y=None):
+        # Ensure attributes exist
+        if not hasattr(self, 'n_neighbors'):
+            self.n_neighbors = 5
         return self
 
     def transform(self, X):
+        # Ensure attributes exist
+        if not hasattr(self, 'n_neighbors'):
+            self.n_neighbors = 5
         # Return X as-is for compatibility
         return X
 
@@ -171,9 +203,15 @@ class ElevationLocalDelta(BaseEstimator, TransformerMixin):
         self.elevation_col = elevation_col
 
     def fit(self, X, y=None):
+        # Ensure attributes exist
+        if not hasattr(self, 'elevation_col'):
+            self.elevation_col = None
         return self
 
     def transform(self, X):
+        # Ensure attributes exist
+        if not hasattr(self, 'elevation_col'):
+            self.elevation_col = None
         # Return X as-is for compatibility
         return X
 
@@ -187,9 +225,15 @@ class ColumnDropper(BaseEstimator, TransformerMixin):
         self.columns_to_drop = columns_to_drop or []
 
     def fit(self, X, y=None):
+        # Ensure attributes exist
+        if not hasattr(self, 'columns_to_drop'):
+            self.columns_to_drop = []
         return self
 
     def transform(self, X):
+        # Ensure attributes exist
+        if not hasattr(self, 'columns_to_drop'):
+            self.columns_to_drop = []
         # Drop columns if specified
         if isinstance(X, pd.DataFrame) and self.columns_to_drop:
             return X.drop(columns=self.columns_to_drop, errors='ignore')
