@@ -15,6 +15,14 @@ from sklearn.metrics import precision_score, recall_score, roc_auc_score, confus
 import pickle
 import os
 
+# Import custom transformers needed for unpickling the model
+from custom_transformers import (
+    _RemainderColsList,
+    RegionAdder, LogTransformer, SingleColumnPowerTransformer,
+    CityMedianImputer, CityModeImputer, ElevationKNNImputer, ElevationLocalDelta,
+    ColumnDropper
+)
+
 # Page configuration
 st.set_page_config(
     page_title="Flood Risk Cost-Benefit Dashboard",
@@ -55,15 +63,80 @@ def load_model_and_data():
     try:
         # Check if model file exists
         if os.path.exists('knn_model.pkl'):
+            # Custom unpickler to handle __main__ module references
+            import sys
+            import custom_transformers
+
+            # Make custom transformers available in __main__ for unpickling
+            sys.modules['__main__'].RegionAdder = custom_transformers.RegionAdder
+            sys.modules['__main__'].LogTransformer = custom_transformers.LogTransformer
+            sys.modules['__main__'].SingleColumnPowerTransformer = custom_transformers.SingleColumnPowerTransformer
+            sys.modules['__main__'].CityMedianImputer = custom_transformers.CityMedianImputer
+            sys.modules['__main__'].CityModeImputer = custom_transformers.CityModeImputer
+            sys.modules['__main__'].ElevationKNNImputer = custom_transformers.ElevationKNNImputer
+            sys.modules['__main__'].ElevationLocalDelta = custom_transformers.ElevationLocalDelta
+            sys.modules['__main__'].ColumnDropper = custom_transformers.ColumnDropper
+
+            # Add _RemainderColsList to sklearn if it doesn't exist (version compatibility)
+            from sklearn.compose import _column_transformer
+            if not hasattr(_column_transformer, '_RemainderColsList'):
+                _column_transformer._RemainderColsList = custom_transformers._RemainderColsList
+
             with open('knn_model.pkl', 'rb') as f:
-                model_data = pickle.load(f)
-            return model_data
+                model = pickle.load(f)
+
+            # Check if pickle contains a dict (new format) or just the model (old format)
+            if isinstance(model, dict):
+                return model
+            else:
+                # Old format: pickle contains just the model
+                # Try to load test data from .npy files
+                try:
+                    X_test = np.load('x_test.npy', allow_pickle=True)
+                    y_test = np.load('y_test.npy', allow_pickle=True)
+
+                    # Get n_neighbors from the model if it's a Pipeline
+                    n_neighbors = None
+                    if hasattr(model, 'named_steps') and 'knn' in model.named_steps:
+                        n_neighbors = model.named_steps['knn'].n_neighbors
+
+                    # Get feature names if available
+                    feature_names = None
+                    if hasattr(X_test, 'columns'):
+                        feature_names = list(X_test.columns)
+
+                    return {
+                        'model': model,
+                        'X_test': X_test,
+                        'y_test': y_test,
+                        'n_neighbors': n_neighbors,
+                        'feature_names': feature_names
+                    }
+                except FileNotFoundError:
+                    st.error("⚠️ Test data files (x_test.npy, y_test.npy) not found!")
+                    st.info("""
+                    ### Missing Test Data Files
+
+                    Please add the following files to the repository:
+                    - `x_test.npy`: Test features
+                    - `y_test.npy`: Test labels
+
+                    You can create these files in your notebook with:
+                    ```python
+                    import numpy as np
+                    np.save('x_test.npy', X_test)
+                    np.save('y_test.npy', y_test)
+                    ```
+                    """)
+                    return None
         else:
             st.error("⚠️ Model file not found. Please run the model training notebook first and export the model.")
             st.info("📝 Instructions: Run the notebook and execute the model export cell to generate 'knn_model.pkl'")
             return None
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
+        import traceback
+        st.error(f"Details: {traceback.format_exc()}")
         return None
 
 # Initialize session state
