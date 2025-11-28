@@ -14,22 +14,37 @@ class _RemainderColsList(list):
     pass
 
 
+# In custom_transformers.py — replace the entire RegionAdder class
 class RegionAdder(BaseEstimator, TransformerMixin):
-    """Add a 'region' column from 'country' using a mapping dict."""
     def __init__(self, region_map=None):
-        self.region_map = region_map
+        self.region_map = region_map or {}
 
     def fit(self, X, y=None):
-        if not hasattr(self, "region_map") or self.region_map is None:
-            self.region_map = {}
         return self
 
     def transform(self, X):
-        X = X.copy()
-        if 'region' not in X.columns:
-            X['region'] = X['country'].map(self.region_map).fillna('Other')
+        X = pd.DataFrame(X).copy()
+        
+        # If 'country' column is missing, just add a dummy 'region' = 'Unknown'
+        if 'country' not in X.columns:
+            X['region'] = 'Unknown'
+            return X
+            
+        # Otherwise do the mapping
+        default_map = {
+            'United States': 'North America', 'USA': 'North America',
+            'Canada': 'North America', 'Mexico': 'North America',
+            'Brazil': 'Latin America & Caribbean',
+            'United Kingdom': 'Europe', 'Germany': 'Europe', 'France': 'Europe',
+            'Netherlands': 'Europe', 'Italy': 'Europe',
+            'India': 'South Asia', 'China': 'East Asia', 'Japan': 'East Asia',
+            'Indonesia': 'Southeast Asia', 'Thailand': 'Southeast Asia',
+            'Australia': 'Oceania', 'New Zealand': 'Oceania',
+            'Nigeria': 'Sub-Saharan Africa', 'Kenya': 'Sub-Saharan Africa',
+        }
+        full_map = {**default_map, **self.region_map}
+        X['region'] = X['country'].map(full_map).fillna('Other')
         return X
-
 
 class LogTransformer(BaseEstimator, TransformerMixin):
     """Create log-transformed versions of specified positive columns."""
