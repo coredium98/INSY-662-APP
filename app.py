@@ -1,4 +1,4 @@
-"""
+ƒ"""
 Flood Risk Cost-Benefit Simulation Dashboard
 Using K-Nearest Neighbors Model
 
@@ -92,7 +92,7 @@ def load_model_and_data():
                 # Old format: pickle contains just the model
                 # Try to load test data from .npy files
                 try:
-                    X_test = np.load('x_test.npy', allow_pickle=True)
+                    X_test = np.load('X_test.npy', allow_pickle=True)
                     y_test = np.load('y_test.npy', allow_pickle=True)
 
                     # Get n_neighbors from the model if it's a Pipeline
