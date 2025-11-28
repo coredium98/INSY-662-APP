@@ -237,7 +237,7 @@ if model_data is not None:
         """Simulate cost-benefit analysis with given parameters"""
 
         # Get predictions for test set
-        y_proba = best_model.predict_proba(X_test)[:, 1]
+        y_proba = model.predict_proba(X_test)[:, 1]
 
         # Evaluate different thresholds
         thresholds = np.arange(0.05, 0.96, 0.05)
@@ -514,7 +514,7 @@ else:
     import pickle
 
     model_data = {
-        'model': best_model,
+        'model': model,
         'X_test': X_test,
         'y_test': y_test,
         'n_neighbors': best_knn.n_neighbors,
