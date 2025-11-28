@@ -95,6 +95,22 @@ def load_model_and_data():
                     X_test = np.load('X_test.npy', allow_pickle=True)
                     y_test = np.load('y_test.npy', allow_pickle=True)
 
+                    # Convert to DataFrame if it's a numpy array (for compatibility)
+                    if isinstance(X_test, np.ndarray) and not hasattr(X_test, 'columns'):
+                        # Try to get feature names from the model's preprocessor
+                        feature_names = None
+                        try:
+                            if hasattr(model, 'named_steps') and 'preprocessor' in model.named_steps:
+                                preprocessor = model.named_steps['preprocessor']
+                                if hasattr(preprocessor, 'get_feature_names_out'):
+                                    feature_names = preprocessor.get_feature_names_out()
+                        except Exception:
+                            pass
+
+                        # If we have feature names, convert to DataFrame
+                        if feature_names is not None and len(feature_names) == X_test.shape[1]:
+                            X_test = pd.DataFrame(X_test, columns=feature_names)
+
                     # Get n_neighbors from the model if it's a Pipeline
                     n_neighbors = None
                     if hasattr(model, 'named_steps') and 'knn' in model.named_steps:

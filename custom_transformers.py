@@ -46,9 +46,15 @@ class LogTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         # Apply log transformation
         if isinstance(X, pd.DataFrame):
-            return np.log(X + self.offset)
+            result = np.log(X + self.offset)
+            return pd.DataFrame(result, columns=X.columns, index=X.index)
         else:
-            return np.log(np.array(X) + self.offset)
+            # Ensure X is a proper numpy array
+            X_arr = np.asarray(X, dtype=np.float64)
+            # Handle potential negative values or zeros
+            X_arr = np.clip(X_arr, 0, None)  # Ensure non-negative
+            result = np.log(X_arr + self.offset)
+            return result
 
 
 class SingleColumnPowerTransformer(BaseEstimator, TransformerMixin):
@@ -65,9 +71,11 @@ class SingleColumnPowerTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         # Apply power transformation
         if isinstance(X, pd.DataFrame):
-            return X ** self.power
+            result = X ** self.power
+            return pd.DataFrame(result, columns=X.columns, index=X.index)
         else:
-            return np.array(X) ** self.power
+            X_arr = np.asarray(X, dtype=np.float64)
+            return X_arr ** self.power
 
 
 class CityMedianImputer(BaseEstimator, TransformerMixin):
