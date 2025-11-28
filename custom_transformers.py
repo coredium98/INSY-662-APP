@@ -90,7 +90,7 @@ class SingleColumnPowerTransformer(BaseEstimator, TransformerMixin):
 
 class CityMedianImputer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None): return self
-    def transform = fit  # no-op
+    transform = fit  # no-op
 
 class CityModeImputer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None): return self
