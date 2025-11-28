@@ -94,6 +94,14 @@ def load_model_and_data():
                 try:
                     X_test = np.load('X_test.npy', allow_pickle=True)
                     y_test = np.load('y_test.npy', allow_pickle=True)
+                    
+                    # Get feature names from preprocessor
+                    preprocessor = model.named_steps['preprocess']
+                    feature_names = preprocessor.get_feature_names_out(input_features=X.columns) if hasattr(X, 'columns') else None
+
+                    # If X_test is numpy, convert to DataFrame with names
+                    if isinstance(X_test, np.ndarray) and feature_names is not None:
+                        X_test = pd.DataFrame(X_test, columns=feature_names)
 
                     # Ensure X_test is properly formatted
                     if isinstance(X_test, pd.DataFrame):
