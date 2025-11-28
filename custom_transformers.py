@@ -46,11 +46,27 @@ class LogTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         # Apply log transformation
         if isinstance(X, pd.DataFrame):
-            result = np.log(X + self.offset)
+            # Ensure DataFrame has numeric dtypes
+            X_numeric = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+            result = np.log(X_numeric + self.offset)
             return pd.DataFrame(result, columns=X.columns, index=X.index)
         else:
             # Ensure X is a proper numpy array
-            X_arr = np.asarray(X, dtype=np.float64)
+            try:
+                # Try direct conversion first
+                X_arr = np.asarray(X, dtype=np.float64)
+            except (ValueError, TypeError):
+                # If conversion fails, try to handle object arrays
+                X_arr = np.asarray(X)
+                # Convert object array to float, replacing non-numeric with 0
+                try:
+                    X_arr = pd.DataFrame(X_arr).apply(pd.to_numeric, errors='coerce').fillna(0).values
+                except Exception:
+                    # Last resort: force conversion and replace inf/nan
+                    X_arr = np.asarray(X, dtype=object)
+                    X_arr = np.where(pd.notna(X_arr), X_arr, 0)
+                    X_arr = X_arr.astype(np.float64)
+
             # Handle potential negative values or zeros
             X_arr = np.clip(X_arr, 0, None)  # Ensure non-negative
             result = np.log(X_arr + self.offset)
@@ -71,10 +87,22 @@ class SingleColumnPowerTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         # Apply power transformation
         if isinstance(X, pd.DataFrame):
-            result = X ** self.power
+            # Ensure DataFrame has numeric dtypes
+            X_numeric = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+            result = X_numeric ** self.power
             return pd.DataFrame(result, columns=X.columns, index=X.index)
         else:
-            X_arr = np.asarray(X, dtype=np.float64)
+            try:
+                X_arr = np.asarray(X, dtype=np.float64)
+            except (ValueError, TypeError):
+                # Handle object arrays
+                X_arr = np.asarray(X)
+                try:
+                    X_arr = pd.DataFrame(X_arr).apply(pd.to_numeric, errors='coerce').fillna(0).values
+                except Exception:
+                    X_arr = np.asarray(X, dtype=object)
+                    X_arr = np.where(pd.notna(X_arr), X_arr, 0)
+                    X_arr = X_arr.astype(np.float64)
             return X_arr ** self.power
 
 

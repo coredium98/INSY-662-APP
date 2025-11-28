@@ -95,21 +95,38 @@ def load_model_and_data():
                     X_test = np.load('X_test.npy', allow_pickle=True)
                     y_test = np.load('y_test.npy', allow_pickle=True)
 
-                    # Convert to DataFrame if it's a numpy array (for compatibility)
-                    if isinstance(X_test, np.ndarray) and not hasattr(X_test, 'columns'):
-                        # Try to get feature names from the model's preprocessor
-                        feature_names = None
-                        try:
-                            if hasattr(model, 'named_steps') and 'preprocessor' in model.named_steps:
-                                preprocessor = model.named_steps['preprocessor']
-                                if hasattr(preprocessor, 'get_feature_names_out'):
-                                    feature_names = preprocessor.get_feature_names_out()
-                        except Exception:
-                            pass
+                    # Ensure X_test is properly formatted
+                    if isinstance(X_test, pd.DataFrame):
+                        # If it's already a DataFrame, ensure numeric types
+                        X_test = X_test.apply(pd.to_numeric, errors='coerce').fillna(0)
+                    elif isinstance(X_test, np.ndarray):
+                        # If it's a numpy array, try to convert to DataFrame with feature names
+                        if not hasattr(X_test, 'columns'):
+                            # Try to get feature names from the model's preprocessor
+                            feature_names = None
+                            try:
+                                if hasattr(model, 'named_steps') and 'preprocessor' in model.named_steps:
+                                    preprocessor = model.named_steps['preprocessor']
+                                    if hasattr(preprocessor, 'get_feature_names_out'):
+                                        feature_names = preprocessor.get_feature_names_out()
+                            except Exception:
+                                pass
 
-                        # If we have feature names, convert to DataFrame
-                        if feature_names is not None and len(feature_names) == X_test.shape[1]:
-                            X_test = pd.DataFrame(X_test, columns=feature_names)
+                            # Convert to numeric array first
+                            try:
+                                X_test_numeric = X_test.astype(np.float64)
+                            except (ValueError, TypeError):
+                                # Handle object arrays
+                                X_test_numeric = pd.DataFrame(X_test).apply(pd.to_numeric, errors='coerce').fillna(0).values
+
+                            # If we have feature names, convert to DataFrame
+                            if feature_names is not None and len(feature_names) == X_test_numeric.shape[1]:
+                                X_test = pd.DataFrame(X_test_numeric, columns=feature_names)
+                            else:
+                                X_test = X_test_numeric
+                    else:
+                        # Unknown format, try to convert
+                        X_test = pd.DataFrame(X_test).apply(pd.to_numeric, errors='coerce').fillna(0)
 
                     # Get n_neighbors from the model if it's a Pipeline
                     n_neighbors = None
@@ -237,7 +254,15 @@ if model_data is not None:
         """Simulate cost-benefit analysis with given parameters"""
 
         # Get predictions for test set
-        y_proba = best_model.predict_proba(X_test)[:, 1]
+        try:
+            y_proba = best_model.predict_proba(X_test)[:, 1]
+        except Exception as e:
+            st.error(f"Error during prediction: {str(e)}")
+            st.error(f"X_test type: {type(X_test)}")
+            st.error(f"X_test shape: {X_test.shape if hasattr(X_test, 'shape') else 'N/A'}")
+            if hasattr(X_test, 'dtypes'):
+                st.error(f"X_test dtypes:\n{X_test.dtypes}")
+            raise
 
         # Evaluate different thresholds
         thresholds = np.arange(0.05, 0.96, 0.05)
